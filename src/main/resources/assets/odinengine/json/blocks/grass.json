@@ -1,0 +1,9 @@
+{
+  "name": "grass",
+  "solid": true,
+  "textures": {
+    "top": "assets/odinengine/textures/blocks/grass_top.png",
+    "bottom": "assets/odinengine/textures/blocks/dirt.png",
+    "side": "assets/odinengine/textures/blocks/grass_side.png"
+  }
+}

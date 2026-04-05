@@ -1,0 +1,7 @@
+{
+  "name": "stone",
+  "solid": true,
+  "textures": {
+    "all": "assets/odinengine/textures/blocks/stone.png"
+  }
+}

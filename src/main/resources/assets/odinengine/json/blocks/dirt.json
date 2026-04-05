@@ -1,0 +1,7 @@
+{
+  "name": "dirt",
+  "solid": true,
+  "textures": {
+    "all": "assets/odinengine/textures/blocks/dirt.png"
+  }
+}

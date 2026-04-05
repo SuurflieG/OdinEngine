@@ -1,0 +1,322 @@
+package com.odin.odinengine.core;
+
+import com.odin.odinengine.math.Camera;
+import com.odin.odinengine.render.Renderer;
+import com.odin.odinengine.world.*;
+
+import java.util.HashSet;
+import java.util.Set;
+
+import static org.lwjgl.glfw.GLFW.*;
+
+public class Engine {
+
+    private Window window;
+    private Renderer renderer;
+    private Camera camera;
+    private World world;
+    private boolean running;
+
+    private RaycastHit currentRaycastHit;
+    private static final float RAYCAST_MAX_DISTANCE = 6.0f;
+    private static final float RAYCAST_STEP_SIZE = 0.05f;
+
+    private BlockRegistry blockRegistry;
+
+    private static final float MOVE_SPEED = 5.0f;
+    private static final float MOUSE_SENSITIVITY = 0.1f;
+    private static final int LOAD_RADIUS = 2;
+
+    private boolean debugOverlayEnabled = false;
+    private boolean f3PressedLastFrame = false;
+    private boolean tabPressedLastFrame = false;
+
+    private boolean leftMousePressedLastFrame = false;
+    private boolean rightMousePressedLastFrame = false;
+
+    private int currentPlayerChunkX;
+    private int currentPlayerChunkZ;
+
+    public void run() {
+        init();
+        loop();
+        cleanup();
+    }
+
+    private void init() {
+        window = new Window(1280, 720, "OdinEngine");
+        window.init();
+
+        camera = new Camera();
+        camera.setPosition(16.0f, 14.0f, 52.0f);
+        camera.setRotation(20.0f, 0.0f, 0.0f);
+
+        currentPlayerChunkX = getPlayerChunkX();
+        currentPlayerChunkZ = getPlayerChunkZ();
+
+        blockRegistry = new BlockRegistry();
+        blockRegistry.bootstrap();
+
+        world = new World(blockRegistry);
+        world.ensureChunksInRadius(currentPlayerChunkX, currentPlayerChunkZ, LOAD_RADIUS);
+
+        renderer = new Renderer();
+        renderer.init(1280, 720, world);
+
+        running = true;
+    }
+
+    private void loop() {
+        long lastTime = System.nanoTime();
+        double fpsTimer = 0.0;
+        int frames = 0;
+
+        while (running && !window.shouldClose()) {
+            long currentTime = System.nanoTime();
+            float deltaTime = (currentTime - lastTime) / 1_000_000_000.0f;
+            lastTime = currentTime;
+
+            fpsTimer += deltaTime;
+            frames++;
+
+            update(deltaTime);
+            render();
+            window.update();
+
+            if (fpsTimer >= 1.0) {
+                updateWindowTitle(frames);
+                frames = 0;
+                fpsTimer = 0.0;
+            }
+        }
+    }
+
+    private void update(float deltaTime) {
+        handleDebugToggle();
+        handleMouseCaptureToggle();
+        handleKeyboardInput(deltaTime);
+        handleMouseInput();
+        updateWorldStreaming();
+        updateRaycast();
+        handleBlockInteraction();
+    }
+
+    private void handleDebugToggle() {
+        boolean f3CurrentlyPressed = window.isKeyPressed(GLFW_KEY_F3);
+
+        if (f3CurrentlyPressed && !f3PressedLastFrame) {
+            debugOverlayEnabled = !debugOverlayEnabled;
+        }
+
+        f3PressedLastFrame = f3CurrentlyPressed;
+    }
+
+    private void handleMouseCaptureToggle() {
+        boolean tabCurrentlyPressed = window.isKeyPressed(GLFW_KEY_TAB);
+
+        if (tabCurrentlyPressed && !tabPressedLastFrame) {
+            window.setMouseCaptured(!window.isMouseCaptured());
+        }
+
+        tabPressedLastFrame = tabCurrentlyPressed;
+    }
+
+    private void handleKeyboardInput(float deltaTime) {
+        float moveAmount = MOVE_SPEED * deltaTime;
+
+        if (window.isKeyPressed(GLFW_KEY_W)) {
+            camera.moveForward(moveAmount);
+        }
+        if (window.isKeyPressed(GLFW_KEY_S)) {
+            camera.moveBackward(moveAmount);
+        }
+        if (window.isKeyPressed(GLFW_KEY_A)) {
+            camera.strafeLeft(moveAmount);
+        }
+        if (window.isKeyPressed(GLFW_KEY_D)) {
+            camera.strafeRight(moveAmount);
+        }
+        if (window.isKeyPressed(GLFW_KEY_SPACE)) {
+            camera.moveUp(moveAmount);
+        }
+        if (window.isKeyPressed(GLFW_KEY_LEFT_SHIFT)) {
+            camera.moveDown(moveAmount);
+        }
+    }
+
+    private void handleMouseInput() {
+        if (!window.isMouseCaptured()) {
+            window.resetMouseDelta();
+            return;
+        }
+
+        float yawDelta = (float) window.getMouseDeltaX() * MOUSE_SENSITIVITY;
+        float pitchDelta = (float) window.getMouseDeltaY() * MOUSE_SENSITIVITY;
+
+        camera.addRotation(-pitchDelta, -yawDelta);
+        window.resetMouseDelta();
+    }
+
+    private void handleBlockInteraction() {
+        boolean leftCurrentlyPressed = window.isMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT);
+        boolean rightCurrentlyPressed = window.isMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT);
+
+        if (window.isMouseCaptured() && currentRaycastHit != null) {
+            if (leftCurrentlyPressed && !leftMousePressedLastFrame) {
+                breakTargetedBlock();
+            }
+
+            if (rightCurrentlyPressed && !rightMousePressedLastFrame) {
+                placeBlockAtTargetFace();
+            }
+        }
+
+        leftMousePressedLastFrame = leftCurrentlyPressed;
+        rightMousePressedLastFrame = rightCurrentlyPressed;
+    }
+
+    private void breakTargetedBlock() {
+        int blockX = currentRaycastHit.getBlockX();
+        int blockY = currentRaycastHit.getBlockY();
+        int blockZ = currentRaycastHit.getBlockZ();
+
+        world.setBlockId(blockX, blockY, blockZ, BlockRegistry.AIR_ID);
+
+        renderer.rebuildChunks(world, getAffectedChunksForBlockEdit(blockX, blockY, blockZ));
+        updateRaycast();
+    }
+
+    private void placeBlockAtTargetFace() {
+        int placeX = currentRaycastHit.getPreviousX();
+        int placeY = currentRaycastHit.getPreviousY();
+        int placeZ = currentRaycastHit.getPreviousZ();
+
+        if (placeY < 0 || placeY >= Chunk.SIZE_Y) {
+            return;
+        }
+
+        if (world.isBlockSolid(placeX, placeY, placeZ)) {
+            return;
+        }
+
+        short blockToPlace = blockRegistry.getId("grass");
+
+        world.setBlockId(placeX, placeY, placeZ, blockToPlace);
+        renderer.rebuildChunks(world, getAffectedChunksForBlockEdit(placeX, placeY, placeZ));
+        updateRaycast();
+    }
+
+    private void updateWorldStreaming() {
+        int playerChunkX = getPlayerChunkX();
+        int playerChunkZ = getPlayerChunkZ();
+
+        if (playerChunkX != currentPlayerChunkX || playerChunkZ != currentPlayerChunkZ) {
+            currentPlayerChunkX = playerChunkX;
+            currentPlayerChunkZ = playerChunkZ;
+
+            world.ensureChunksInRadius(currentPlayerChunkX, currentPlayerChunkZ, LOAD_RADIUS);
+            world.unloadChunksOutsideRadius(currentPlayerChunkX, currentPlayerChunkZ, LOAD_RADIUS);
+            renderer.rebuildWorldMeshes(world);
+        }
+    }
+
+    private void updateRaycast() {
+        currentRaycastHit = world.raycast(
+                camera.getPosition(),
+                camera.getForwardVector(),
+                RAYCAST_MAX_DISTANCE,
+                RAYCAST_STEP_SIZE
+        );
+    }
+
+    private Set<ChunkPos> getAffectedChunksForBlockEdit(int worldX, int worldY, int worldZ) {
+        Set<ChunkPos> affected = new HashSet<>();
+
+        ChunkPos center = world.getChunkPosFromWorldPos(worldX, worldZ);
+        affected.add(center);
+
+        int localX = Math.floorMod(worldX, Chunk.SIZE_X);
+        int localZ = Math.floorMod(worldZ, Chunk.SIZE_Z);
+
+        if (localX == 0) {
+            affected.add(new ChunkPos(center.x() - 1, center.z()));
+        }
+        if (localX == Chunk.SIZE_X - 1) {
+            affected.add(new ChunkPos(center.x() + 1, center.z()));
+        }
+        if (localZ == 0) {
+            affected.add(new ChunkPos(center.x(), center.z() - 1));
+        }
+        if (localZ == Chunk.SIZE_Z - 1) {
+            affected.add(new ChunkPos(center.x(), center.z() + 1));
+        }
+
+        return affected;
+    }
+
+    private int getPlayerChunkX() {
+        return Math.floorDiv((int) Math.floor(camera.getPosition().x), Chunk.SIZE_X);
+    }
+
+    private int getPlayerChunkZ() {
+        return Math.floorDiv((int) Math.floor(camera.getPosition().z), Chunk.SIZE_Z);
+    }
+
+    private void render() {
+        String targetedBlockName = null;
+
+        if (currentRaycastHit != null) {
+            targetedBlockName = world.getBlockRegistry().get(currentRaycastHit.getBlockId()).getName().toUpperCase();
+        }
+
+        renderer.render(
+                camera,
+                world,
+                targetedBlockName,
+                window.getWidth(),
+                window.getHeight()
+        );
+    }
+
+    private void updateWindowTitle(int fps) {
+        if (debugOverlayEnabled) {
+            int renderedBlocks = renderer.getRenderedBlockCount();
+            int renderedFaces = renderer.getRenderedFaceCount();
+
+            String targetInfo;
+            if (currentRaycastHit != null) {
+                String blockName = world.getBlockRegistry().get(currentRaycastHit.getBlockId()).getName();
+                targetInfo = String.format(
+                        " | Target: %s @ (%d, %d, %d)",
+                        blockName,
+                        currentRaycastHit.getBlockX(),
+                        currentRaycastHit.getBlockY(),
+                        currentRaycastHit.getBlockZ()
+                );
+            } else {
+                targetInfo = " | Target: none";
+            }
+
+            String debugTitle = String.format(
+                    "OdinEngine | FPS: %d | Chunks: %d | Blocks: %d | Faces: %d | Pos: (%.2f, %.2f, %.2f)%s",
+                    fps,
+                    world.getLoadedChunkCount(),
+                    renderedBlocks,
+                    renderedFaces,
+                    camera.getPosition().x,
+                    camera.getPosition().y,
+                    camera.getPosition().z,
+                    targetInfo
+            );
+
+            window.setTitle(debugTitle);
+        } else {
+            window.setTitle("OdinEngine");
+        }
+    }
+
+    private void cleanup() {
+        renderer.cleanup();
+        window.cleanup();
+    }
+}
