@@ -17,13 +17,11 @@ public class Engine {
     private Camera camera;
     private World world;
     private boolean running;
+    private short selectedBlockId;
+    private String selectedBlockName;
 
-    private Vector3f debugRayStart;
-    private Vector3f debugRayEnd;
-    private Vector3f centerRayStart;
-    private Vector3f centerRayEnd;
-    private Vector3f offsetRayStart;
-    private Vector3f offsetRayEnd;
+    private boolean showDebugOutline = false;
+    private boolean debugOutlineKeyWasDown = false;
 
     private RaycastHit currentRaycastHit;
     private static final float RAYCAST_MAX_DISTANCE = 6.0f;
@@ -64,6 +62,9 @@ public class Engine {
 
         blockRegistry = new BlockRegistry();
         blockRegistry.bootstrap();
+
+        selectedBlockId = blockRegistry.getId("grass");
+        selectedBlockName = "GRASS";
 
         world = new World(blockRegistry);
         world.ensureChunksInRadius(currentPlayerChunkX, currentPlayerChunkZ, LOAD_RADIUS);
@@ -107,6 +108,8 @@ public class Engine {
         updateWorldStreaming();
         updateRaycast();
         handleBlockInteraction();
+        handleBlockSelectionInput();
+        handleDebugToggleInput();
     }
 
     private void handleDebugToggle() {
@@ -183,6 +186,26 @@ public class Engine {
         rightMousePressedLastFrame = rightCurrentlyPressed;
     }
 
+    private void handleBlockSelectionInput() {
+        if (window.isKeyPressed(org.lwjgl.glfw.GLFW.GLFW_KEY_1)) {
+            selectBlock("grass");
+        }
+        if (window.isKeyPressed(org.lwjgl.glfw.GLFW.GLFW_KEY_2)) {
+            selectBlock("dirt");
+        }
+        if (window.isKeyPressed(org.lwjgl.glfw.GLFW.GLFW_KEY_3)) {
+            selectBlock("stone");
+        }
+    }
+
+    private void selectBlock(String blockName) {
+        short id = blockRegistry.getId(blockName);
+        if (id != 0) {
+            selectedBlockId = id;
+            selectedBlockName = blockName.toUpperCase();
+        }
+    }
+
     private void breakTargetedBlock() {
         int blockX = currentRaycastHit.getBlockX();
         int blockY = currentRaycastHit.getBlockY();
@@ -207,11 +230,21 @@ public class Engine {
             return;
         }
 
-        short blockToPlace = blockRegistry.getId("grass");
+        short blockToPlace = selectedBlockId;
         world.setBlockId(placeX, placeY, placeZ, blockToPlace);
 
         renderer.rebuildChunks(world, getAffectedChunksForBlockEdit(placeX, placeY, placeZ));
         updateRaycast();
+    }
+
+    private void handleDebugToggleInput() {
+        boolean keyDown = window.isKeyPressed(org.lwjgl.glfw.GLFW.GLFW_KEY_F6);
+
+        if (keyDown && !debugOutlineKeyWasDown) {
+            showDebugOutline = !showDebugOutline;
+        }
+
+        debugOutlineKeyWasDown = keyDown;
     }
 
     private void updateWorldStreaming() {
@@ -240,9 +273,6 @@ public class Engine {
 
         float visibleLength = 6.0f;
 
-        centerRayStart = new Vector3f(origin).add(new Vector3f(forward).mul(0.2f));
-        centerRayEnd = new Vector3f(centerRayStart).add(new Vector3f(forward).mul(visibleLength));
-
         Vector3f worldUp = new Vector3f(0.0f, 1.0f, 0.0f);
         Vector3f right = new Vector3f(forward).cross(worldUp);
 
@@ -251,9 +281,6 @@ public class Engine {
         } else {
             right.normalize();
         }
-
-        offsetRayStart = new Vector3f(centerRayStart).add(new Vector3f(right).mul(0.15f));
-        offsetRayEnd = new Vector3f(centerRayEnd).add(new Vector3f(right).mul(0.15f));
     }
 
     private Set<ChunkPos> getAffectedChunksForBlockEdit(int worldX, int worldY, int worldZ) {
@@ -296,46 +323,29 @@ public class Engine {
         int hitBlockY = 0;
         int hitBlockZ = 0;
 
-        boolean showHitPoint = false;
-        float hitX = 0.0f;
-        float hitY = 0.0f;
-        float hitZ = 0.0f;
-
         if (currentRaycastHit != null) {
             targetedBlockName = world.getBlockRegistry()
                     .get(currentRaycastHit.getBlockId())
                     .getName()
                     .toUpperCase();
 
-            showBlockOutline = true;
+            showBlockOutline = showDebugOutline;
             hitBlockX = currentRaycastHit.getBlockX();
             hitBlockY = currentRaycastHit.getBlockY();
             hitBlockZ = currentRaycastHit.getBlockZ();
-
-            showHitPoint = true;
-            hitX = currentRaycastHit.getHitX();
-            hitY = currentRaycastHit.getHitY();
-            hitZ = currentRaycastHit.getHitZ();
         }
 
         renderer.render(
                 camera,
                 world,
                 targetedBlockName,
+                selectedBlockName,
                 window.getWidth(),
                 window.getHeight(),
-                centerRayStart,
-                centerRayEnd,
-                offsetRayStart,
-                offsetRayEnd,
                 showBlockOutline,
                 hitBlockX,
                 hitBlockY,
-                hitBlockZ,
-                showHitPoint,
-                hitX,
-                hitY,
-                hitZ
+                hitBlockZ
         );
     }
 

@@ -14,12 +14,14 @@ public class Camera {
     }
 
     public Matrix4f getViewMatrix() {
-        return new Matrix4f()
-                .identity()
-                .rotateX((float) Math.toRadians(-rotation.x))
-                .rotateY((float) Math.toRadians(-rotation.y))
-                .rotateZ((float) Math.toRadians(-rotation.z))
-                .translate(-position.x, -position.y, -position.z);
+        Vector3f forward = getForwardVector();
+        Vector3f target = new Vector3f(position).add(forward);
+
+        return new Matrix4f().lookAt(
+                position,
+                target,
+                new Vector3f(0.0f, 1.0f, 0.0f)
+        );
     }
 
     public void moveForward(float amount) {

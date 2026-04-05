@@ -17,9 +17,7 @@ public class Renderer {
     private Shader shader;
     private ChunkRenderer chunkRenderer;
     private HUDRenderer hudRenderer;
-    private DebugLineRenderer debugLineRenderer;
     private DebugBlockOutlineRenderer debugBlockOutlineRenderer;
-    private DebugPointRenderer debugPointRenderer;
 
     private final Matrix4f projection = new Matrix4f();
 
@@ -35,14 +33,8 @@ public class Renderer {
         hudRenderer = new HUDRenderer();
         hudRenderer.init();
 
-        debugLineRenderer = new DebugLineRenderer();
-        debugLineRenderer.init();
-
         debugBlockOutlineRenderer = new DebugBlockOutlineRenderer();
         debugBlockOutlineRenderer.init();
-
-        debugPointRenderer = new DebugPointRenderer();
-        debugPointRenderer.init();
 
         float aspectRatio = (float) width / (float) height;
         projection.setPerspective((float) Math.toRadians(70.0f), aspectRatio, 0.1f, 1000.0f);
@@ -78,20 +70,13 @@ public class Renderer {
             Camera camera,
             World world,
             String targetedBlockName,
+            String selectedBlockName,
             int screenWidth,
             int screenHeight,
-            Vector3f centerRayStart,
-            Vector3f centerRayEnd,
-            Vector3f offsetRayStart,
-            Vector3f offsetRayEnd,
             boolean showBlockOutline,
             int hitBlockX,
             int hitBlockY,
-            int hitBlockZ,
-            boolean showHitPoint,
-            float hitX,
-            float hitY,
-            float hitZ
+            int hitBlockZ
     ) {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -101,45 +86,18 @@ public class Renderer {
         chunkRenderer.render(shader, world);
         shader.unbind();
 
-        if (centerRayStart != null && centerRayEnd != null) {
-            debugLineRenderer.renderLine(
-                    centerRayStart, centerRayEnd,
-                    projection, camera.getViewMatrix(),
-                    1.0f, 1.0f, 0.0f,
-                    false
-            );
-        }
-
-        if (offsetRayStart != null && offsetRayEnd != null) {
-            debugLineRenderer.renderLine(
-                    offsetRayStart, offsetRayEnd,
-                    projection, camera.getViewMatrix(),
-                    0.0f, 1.0f, 0.0f,
-                    false
-            );
-        }
-
         if (showBlockOutline) {
             debugBlockOutlineRenderer.renderBlockOutline(
-                    hitBlockX, hitBlockY, hitBlockZ,
-                    projection, camera.getViewMatrix()
+                    hitBlockX,
+                    hitBlockY,
+                    hitBlockZ,
+                    projection,
+                    camera.getViewMatrix()
             );
         }
 
-        if (showHitPoint) {
-            debugPointRenderer.renderPoint(
-                    hitX, hitY, hitZ,
-                    projection, camera.getViewMatrix()
-            );
-        }
-
-        hudRenderer.render(screenWidth, screenHeight, targetedBlockName);
+        hudRenderer.render(screenWidth, screenHeight, targetedBlockName, selectedBlockName);
     }
-/*    public void renderDebugRay(Vector3f start, Vector3f end, Camera camera) {
-        if (debugLineRenderer != null) {
-            debugLineRenderer.renderLine(start, end, projection, camera.getViewMatrix());
-        }
-    }*/
 
     public int getRenderedBlockCount() {
         return chunkRenderer != null ? chunkRenderer.getRenderedBlockCount() : 0;
@@ -161,9 +119,6 @@ public class Renderer {
         }
         if (debugBlockOutlineRenderer != null) {
             debugBlockOutlineRenderer.cleanup();
-        }
-        if (debugPointRenderer != null) {
-            debugPointRenderer.cleanup();
         }
     }
 

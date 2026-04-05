@@ -98,7 +98,7 @@ public class HUDRenderer {
         glBindVertexArray(0);
     }
 
-    public void render(int screenWidth, int screenHeight, String targetedBlockName) {
+    public void render(int screenWidth, int screenHeight, String targetedBlockName, String selectedBlockName) {
         glDisable(GL_DEPTH_TEST);
 
         drawCrosshair();
@@ -112,12 +112,29 @@ public class HUDRenderer {
 
             drawPanel(panelX, panelY, panelWidth, panelHeight, screenWidth, screenHeight);
 
-            // approximate centering for now
             float textWidthEstimate = targetedBlockName.length() * 14.0f;
             float textX = panelX + (panelWidth - textWidthEstimate) / 2.0f;
             float textY = panelY + 25.0f;
 
             textRenderer.renderText(targetedBlockName, textX, textY, screenWidth, screenHeight);
+        }
+
+        if (selectedBlockName != null && !selectedBlockName.isBlank()) {
+            float panelWidth = 180.0f;
+            float panelHeight = 30.0f;
+
+            float panelX = (screenWidth - panelWidth) / 2.0f;
+            float panelY = 62.0f;
+
+            drawPanel(panelX, panelY, panelWidth, panelHeight, screenWidth, screenHeight);
+
+            String selectedText = "SELECTED: " + selectedBlockName;
+
+            float textWidthEstimate = selectedText.length() * 12.0f;
+            float textX = panelX + (panelWidth - textWidthEstimate) / 2.0f;
+            float textY = panelY + 21.0f;
+
+            textRenderer.renderText(selectedText, textX, textY, screenWidth, screenHeight);
         }
 
         glEnable(GL_DEPTH_TEST);

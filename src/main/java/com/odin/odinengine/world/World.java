@@ -47,9 +47,13 @@ public class World {
     public RaycastHit raycast(Vector3f origin, Vector3f direction, float maxDistance) {
         Vector3f dir = new Vector3f(direction).normalize();
 
-        int x = (int) Math.floor(origin.x);
-        int y = (int) Math.floor(origin.y);
-        int z = (int) Math.floor(origin.z);
+        // Convert render/world space into logical grid space.
+        // This compensates for blocks being rendered centered on integer coords.
+        Vector3f gridOrigin = new Vector3f(origin).add(0.5f, 0.5f, 0.5f);
+
+        int x = (int) Math.floor(gridOrigin.x);
+        int y = (int) Math.floor(gridOrigin.y);
+        int z = (int) Math.floor(gridOrigin.z);
 
         int stepX = dir.x > 0.0f ? 1 : (dir.x < 0.0f ? -1 : 0);
         int stepY = dir.y > 0.0f ? 1 : (dir.y < 0.0f ? -1 : 0);
@@ -59,9 +63,9 @@ public class World {
         float tDeltaY = stepY != 0 ? Math.abs(1.0f / dir.y) : Float.POSITIVE_INFINITY;
         float tDeltaZ = stepZ != 0 ? Math.abs(1.0f / dir.z) : Float.POSITIVE_INFINITY;
 
-        float tMaxX = intBound(origin.x, dir.x);
-        float tMaxY = intBound(origin.y, dir.y);
-        float tMaxZ = intBound(origin.z, dir.z);
+        float tMaxX = intBound(gridOrigin.x, dir.x);
+        float tMaxY = intBound(gridOrigin.y, dir.y);
+        float tMaxZ = intBound(gridOrigin.z, dir.z);
 
         Direction enteredFace = null;
         float traveled = 0.0f;
@@ -69,11 +73,19 @@ public class World {
         while (traveled <= maxDistance) {
             short blockId = getBlockId(x, y, z);
             if (blockRegistry.isSolid(blockId)) {
-                float hitX = origin.x + dir.x * traveled;
-                float hitY = origin.y + dir.y * traveled;
-                float hitZ = origin.z + dir.z * traveled;
+                float hitX = gridOrigin.x + dir.x * traveled - 0.5f;
+                float hitY = gridOrigin.y + dir.y * traveled - 0.5f;
+                float hitZ = gridOrigin.z + dir.z * traveled - 0.5f;
 
-                return new RaycastHit(x, y, z, blockId, enteredFace != null ? enteredFace : Direction.FRONT, hitX, hitY, hitZ
+                return new RaycastHit(
+                        x,
+                        y,
+                        z,
+                        blockId,
+                        enteredFace != null ? enteredFace : Direction.FRONT,
+                        hitX,
+                        hitY,
+                        hitZ
                 );
             }
 

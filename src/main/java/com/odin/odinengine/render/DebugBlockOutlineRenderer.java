@@ -39,11 +39,11 @@ public class DebugBlockOutlineRenderer {
     public void renderBlockOutline(int blockX, int blockY, int blockZ, Matrix4f projection, Matrix4f view) {
         float e = 0.002f;
         renderBox(
-                blockX - e, blockY - e, blockZ - e,
-                blockX + 1.0f + e, blockY + 1.0f + e, blockZ + 1.0f + e,
+                blockX - 0.5f - e, blockY - 0.5f - e, blockZ - 0.5f - e,
+                blockX + 0.5f + e, blockY + 0.5f + e, blockZ + 0.5f + e,
                 projection, view,
                 1.0f, 0.0f, 0.0f,
-                false
+                true
         );
     }
 
