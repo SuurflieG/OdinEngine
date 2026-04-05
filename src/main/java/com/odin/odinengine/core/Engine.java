@@ -3,6 +3,7 @@ package com.odin.odinengine.core;
 import com.odin.odinengine.math.Camera;
 import com.odin.odinengine.render.Renderer;
 import com.odin.odinengine.world.*;
+import org.joml.Vector3f;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -16,6 +17,9 @@ public class Engine {
     private Camera camera;
     private World world;
     private boolean running;
+
+    private Vector3f debugRayStart;
+    private Vector3f debugRayEnd;
 
     private RaycastHit currentRaycastHit;
     private static final float RAYCAST_MAX_DISTANCE = 6.0f;
@@ -221,11 +225,17 @@ public class Engine {
     }
 
     private void updateRaycast() {
+        Vector3f origin = new Vector3f(camera.getPosition());
+        Vector3f direction = new Vector3f(camera.getForwardVector()).normalize();
+
         currentRaycastHit = world.raycast(
-                camera.getPosition(),
-                camera.getForwardVector(),
+                origin,
+                direction,
                 RAYCAST_MAX_DISTANCE
         );
+
+        debugRayStart = new Vector3f(origin);
+        debugRayEnd = new Vector3f(direction).mul(RAYCAST_MAX_DISTANCE).add(origin);
     }
 
     private Set<ChunkPos> getAffectedChunksForBlockEdit(int worldX, int worldY, int worldZ) {
@@ -265,7 +275,10 @@ public class Engine {
         String targetedBlockName = null;
 
         if (currentRaycastHit != null) {
-            targetedBlockName = world.getBlockRegistry().get(currentRaycastHit.getBlockId()).getName().toUpperCase();
+            targetedBlockName = world.getBlockRegistry()
+                    .get(currentRaycastHit.getBlockId())
+                    .getName()
+                    .toUpperCase();
         }
 
         renderer.render(
@@ -273,7 +286,9 @@ public class Engine {
                 world,
                 targetedBlockName,
                 window.getWidth(),
-                window.getHeight()
+                window.getHeight(),
+                debugRayStart,
+                debugRayEnd
         );
     }
 

@@ -4,6 +4,7 @@ import com.odin.odinengine.math.Camera;
 import com.odin.odinengine.world.ChunkPos;
 import com.odin.odinengine.world.World;
 import org.joml.Matrix4f;
+import org.joml.Vector3f;
 
 import java.util.Collection;
 
@@ -16,6 +17,7 @@ public class Renderer {
     private Shader shader;
     private ChunkRenderer chunkRenderer;
     private HUDRenderer hudRenderer;
+    private DebugLineRenderer debugLineRenderer;
 
     private final Matrix4f projection = new Matrix4f();
 
@@ -30,6 +32,9 @@ public class Renderer {
 
         hudRenderer = new HUDRenderer();
         hudRenderer.init();
+
+        debugLineRenderer = new DebugLineRenderer();
+        debugLineRenderer.init();
 
         float aspectRatio = (float) width / (float) height;
         projection.setPerspective((float) Math.toRadians(70.0f), aspectRatio, 0.1f, 1000.0f);
@@ -61,18 +66,34 @@ public class Renderer {
         }
     }
 
-    public void render(Camera camera, World world, String targetedBlockName, int screenWidth, int screenHeight) {
+    public void render(
+            Camera camera,
+            World world,
+            String targetedBlockName,
+            int screenWidth,
+            int screenHeight,
+            Vector3f debugRayStart,
+            Vector3f debugRayEnd
+    ) {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         shader.bind();
         shader.setUniform("projection", projection);
         shader.setUniform("view", camera.getViewMatrix());
-
         chunkRenderer.render(shader, world);
-
         shader.unbind();
 
+        if (debugRayStart != null && debugRayEnd != null) {
+            debugLineRenderer.renderLine(debugRayStart, debugRayEnd, projection, camera.getViewMatrix());
+        }
+
         hudRenderer.render(screenWidth, screenHeight, targetedBlockName);
+    }
+
+    public void renderDebugRay(Vector3f start, Vector3f end, Camera camera) {
+        if (debugLineRenderer != null) {
+            debugLineRenderer.renderLine(start, end, projection, camera.getViewMatrix());
+        }
     }
 
     public int getRenderedBlockCount() {
@@ -93,5 +114,9 @@ public class Renderer {
         if (shader != null) {
             shader.cleanup();
         }
+        if (debugLineRenderer != null) {
+            debugLineRenderer.cleanup();
+        }
     }
+
 }
