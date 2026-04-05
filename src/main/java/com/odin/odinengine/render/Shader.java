@@ -108,4 +108,9 @@ public class Shader {
 
         glUniform2f(location, x, y);
     }
+
+    public void setUniform(String name, float x, float y, float z, float w) {
+        int location = glGetUniformLocation(programId, name);
+        glUniform4f(location, x, y, z, w);
+    }
 }

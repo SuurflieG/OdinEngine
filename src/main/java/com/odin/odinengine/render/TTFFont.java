@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.lwjgl.opengl.GL11.*;
+import static org.lwjgl.opengl.GL12.GL_CLAMP_TO_EDGE;
 import static org.lwjgl.stb.STBTruetype.stbtt_BakeFontBitmap;
 
 public class TTFFont {
@@ -57,6 +58,7 @@ public class TTFFont {
             }
 
             textureId = glGenTextures();
+            System.out.println("TTF baked successfully: " + fontPath + ", textureId=" + textureId);
             glBindTexture(GL_TEXTURE_2D, textureId);
 
             glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -75,8 +77,8 @@ public class TTFFont {
 
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
             glBindTexture(GL_TEXTURE_2D, 0);
 

@@ -80,7 +80,7 @@ public class TTFTextRenderer {
 
                 if (c == '\n') {
                     xBuf.put(0, x);
-                    yBuf.put(0, yBuf.get(0) + 24.0f);
+                    yBuf.put(0, yBuf.get(0) + 40.0f);
                     continue;
                 }
 
@@ -112,25 +112,21 @@ public class TTFTextRenderer {
                 float s1 = quad.s1();
                 float t1 = quad.t1();
 
-                // top-left
                 vertexArray[vertexOffset++] = x0;
                 vertexArray[vertexOffset++] = y0;
                 vertexArray[vertexOffset++] = s0;
                 vertexArray[vertexOffset++] = t0;
 
-                // top-right
                 vertexArray[vertexOffset++] = x1;
                 vertexArray[vertexOffset++] = y0;
                 vertexArray[vertexOffset++] = s1;
                 vertexArray[vertexOffset++] = t0;
 
-                // bottom-right
                 vertexArray[vertexOffset++] = x1;
                 vertexArray[vertexOffset++] = y1;
                 vertexArray[vertexOffset++] = s1;
                 vertexArray[vertexOffset++] = t1;
 
-                // bottom-left
                 vertexArray[vertexOffset++] = x0;
                 vertexArray[vertexOffset++] = y1;
                 vertexArray[vertexOffset++] = s0;
@@ -152,19 +148,20 @@ public class TTFTextRenderer {
             return;
         }
 
-        FloatBuffer vertexBuffer = BufferUtils.createFloatBuffer(quadIndex * 4 * 4);
-        vertexBuffer.put(vertexArray, 0, quadIndex * 4 * 4).flip();
+        FloatBuffer vertexBuffer = BufferUtils.createFloatBuffer(quadIndex * 16);
+        vertexBuffer.put(vertexArray, 0, quadIndex * 16).flip();
 
         IntBuffer indexBuffer = BufferUtils.createIntBuffer(quadIndex * 6);
         indexBuffer.put(indexArray, 0, quadIndex * 6).flip();
 
         glDisable(GL_DEPTH_TEST);
+        glDisable(GL_CULL_FACE);
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
         shader.bind();
         shader.setUniform("screenSize", (float) screenWidth, (float) screenHeight);
-        shader.setUniform("textColor", 1.0f, 1.0f, 1.0f);
+        shader.setUniform("textColor", 1.0f, 0.0f, 0.0f);
         shader.setUniform("fontSampler", 0);
 
         glActiveTexture(GL_TEXTURE0);
