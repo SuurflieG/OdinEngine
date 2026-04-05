@@ -69,7 +69,12 @@ public class World {
         while (traveled <= maxDistance) {
             short blockId = getBlockId(x, y, z);
             if (blockRegistry.isSolid(blockId)) {
-                return new RaycastHit(x, y, z, blockId, enteredFace != null ? enteredFace : Direction.FRONT);
+                float hitX = origin.x + dir.x * traveled;
+                float hitY = origin.y + dir.y * traveled;
+                float hitZ = origin.z + dir.z * traveled;
+
+                return new RaycastHit(x, y, z, blockId, enteredFace != null ? enteredFace : Direction.FRONT, hitX, hitY, hitZ
+                );
             }
 
             if (tMaxX < tMaxY) {

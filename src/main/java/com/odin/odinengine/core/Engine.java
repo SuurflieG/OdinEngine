@@ -20,6 +20,10 @@ public class Engine {
 
     private Vector3f debugRayStart;
     private Vector3f debugRayEnd;
+    private Vector3f centerRayStart;
+    private Vector3f centerRayEnd;
+    private Vector3f offsetRayStart;
+    private Vector3f offsetRayEnd;
 
     private RaycastHit currentRaycastHit;
     private static final float RAYCAST_MAX_DISTANCE = 6.0f;
@@ -226,16 +230,30 @@ public class Engine {
 
     private void updateRaycast() {
         Vector3f origin = new Vector3f(camera.getPosition());
-        Vector3f direction = new Vector3f(camera.getForwardVector()).normalize();
+        Vector3f forward = new Vector3f(camera.getForwardVector()).normalize();
 
         currentRaycastHit = world.raycast(
                 origin,
-                direction,
+                forward,
                 RAYCAST_MAX_DISTANCE
         );
 
-        debugRayStart = new Vector3f(origin);
-        debugRayEnd = new Vector3f(direction).mul(RAYCAST_MAX_DISTANCE).add(origin);
+        float visibleLength = 6.0f;
+
+        centerRayStart = new Vector3f(origin).add(new Vector3f(forward).mul(0.2f));
+        centerRayEnd = new Vector3f(centerRayStart).add(new Vector3f(forward).mul(visibleLength));
+
+        Vector3f worldUp = new Vector3f(0.0f, 1.0f, 0.0f);
+        Vector3f right = new Vector3f(forward).cross(worldUp);
+
+        if (right.lengthSquared() < 0.0001f) {
+            right.set(1.0f, 0.0f, 0.0f);
+        } else {
+            right.normalize();
+        }
+
+        offsetRayStart = new Vector3f(centerRayStart).add(new Vector3f(right).mul(0.15f));
+        offsetRayEnd = new Vector3f(centerRayEnd).add(new Vector3f(right).mul(0.15f));
     }
 
     private Set<ChunkPos> getAffectedChunksForBlockEdit(int worldX, int worldY, int worldZ) {
@@ -273,12 +291,31 @@ public class Engine {
 
     private void render() {
         String targetedBlockName = null;
+        boolean showBlockOutline = false;
+        int hitBlockX = 0;
+        int hitBlockY = 0;
+        int hitBlockZ = 0;
+
+        boolean showHitPoint = false;
+        float hitX = 0.0f;
+        float hitY = 0.0f;
+        float hitZ = 0.0f;
 
         if (currentRaycastHit != null) {
             targetedBlockName = world.getBlockRegistry()
                     .get(currentRaycastHit.getBlockId())
                     .getName()
                     .toUpperCase();
+
+            showBlockOutline = true;
+            hitBlockX = currentRaycastHit.getBlockX();
+            hitBlockY = currentRaycastHit.getBlockY();
+            hitBlockZ = currentRaycastHit.getBlockZ();
+
+            showHitPoint = true;
+            hitX = currentRaycastHit.getHitX();
+            hitY = currentRaycastHit.getHitY();
+            hitZ = currentRaycastHit.getHitZ();
         }
 
         renderer.render(
@@ -287,8 +324,18 @@ public class Engine {
                 targetedBlockName,
                 window.getWidth(),
                 window.getHeight(),
-                debugRayStart,
-                debugRayEnd
+                centerRayStart,
+                centerRayEnd,
+                offsetRayStart,
+                offsetRayEnd,
+                showBlockOutline,
+                hitBlockX,
+                hitBlockY,
+                hitBlockZ,
+                showHitPoint,
+                hitX,
+                hitY,
+                hitZ
         );
     }
 
