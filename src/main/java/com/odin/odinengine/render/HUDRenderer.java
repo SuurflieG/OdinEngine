@@ -6,16 +6,11 @@ public class HUDRenderer {
     private int vaoId;
     private int vboId;
 
-    private TextRenderer textRenderer;
-
     public void init() {
         hudShader = new Shader(
                 "src/main/resources/shaders/hud_vertex.glsl",
                 "src/main/resources/shaders/hud_fragment.glsl"
         );
-
-        textRenderer = new TextRenderer();
-        textRenderer.init();
 
         float size = 0.015f;
         float[] vertices = {
@@ -58,26 +53,12 @@ public class HUDRenderer {
 
         hudShader.unbind();
 
-        if (targetedBlockName != null && !targetedBlockName.isBlank()) {
-            textRenderer.renderText(
-                    targetedBlockName,
-                    20.0f,
-                    20.0f,
-                    2.0f,
-                    screenWidth,
-                    screenHeight
-            );
-        }
-
         org.lwjgl.opengl.GL11.glEnable(org.lwjgl.opengl.GL11.GL_DEPTH_TEST);
     }
 
     public void cleanup() {
         if (hudShader != null) {
             hudShader.cleanup();
-        }
-        if (textRenderer != null) {
-            textRenderer.cleanup();
         }
 
         org.lwjgl.opengl.GL15.glDeleteBuffers(vboId);
