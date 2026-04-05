@@ -1,10 +1,33 @@
 package com.odin.odinengine.render;
 
-public class HUDRenderer {
+import org.lwjgl.system.MemoryUtil;
 
+import java.nio.FloatBuffer;
+
+import static org.lwjgl.opengl.GL11.GL_DEPTH_TEST;
+import static org.lwjgl.opengl.GL11.GL_FLOAT;
+import static org.lwjgl.opengl.GL11.GL_LINES;
+import static org.lwjgl.opengl.GL11.glDisable;
+import static org.lwjgl.opengl.GL11.glDrawArrays;
+import static org.lwjgl.opengl.GL11.glEnable;
+import static org.lwjgl.opengl.GL15.GL_ARRAY_BUFFER;
+import static org.lwjgl.opengl.GL15.GL_STATIC_DRAW;
+import static org.lwjgl.opengl.GL15.glBindBuffer;
+import static org.lwjgl.opengl.GL15.glBufferData;
+import static org.lwjgl.opengl.GL15.glDeleteBuffers;
+import static org.lwjgl.opengl.GL15.glGenBuffers;
+import static org.lwjgl.opengl.GL20.glEnableVertexAttribArray;
+import static org.lwjgl.opengl.GL20.glVertexAttribPointer;
+import static org.lwjgl.opengl.GL30.glBindVertexArray;
+import static org.lwjgl.opengl.GL30.glDeleteVertexArrays;
+import static org.lwjgl.opengl.GL30.glGenVertexArrays;
+
+public class HUDRenderer {
     private Shader hudShader;
     private int vaoId;
     private int vboId;
+
+    private TTFTextRenderer textRenderer;
 
     public void init() {
         hudShader = new Shader(
@@ -12,56 +35,80 @@ public class HUDRenderer {
                 "src/main/resources/shaders/hud_fragment.glsl"
         );
 
+        textRenderer = new TTFTextRenderer();
+        textRenderer.init("src/main/resources/assets/odinengine/fonts/debug.ttf", 24.0f);
+
         float size = 0.015f;
         float[] vertices = {
-                -size,  0.0f,
-                size,  0.0f,
-
+                -size, 0.0f,
+                size, 0.0f,
                 0.0f, -size,
                 0.0f,  size
         };
 
-        vaoId = org.lwjgl.opengl.GL30.glGenVertexArrays();
-        vboId = org.lwjgl.opengl.GL15.glGenBuffers();
+        vaoId = glGenVertexArrays();
+        vboId = glGenBuffers();
 
-        org.lwjgl.opengl.GL30.glBindVertexArray(vaoId);
+        glBindVertexArray(vaoId);
 
-        java.nio.FloatBuffer vertexBuffer = org.lwjgl.system.MemoryUtil.memAllocFloat(vertices.length);
+        FloatBuffer vertexBuffer = MemoryUtil.memAllocFloat(vertices.length);
         vertexBuffer.put(vertices).flip();
 
-        org.lwjgl.opengl.GL15.glBindBuffer(org.lwjgl.opengl.GL15.GL_ARRAY_BUFFER, vboId);
-        org.lwjgl.opengl.GL15.glBufferData(org.lwjgl.opengl.GL15.GL_ARRAY_BUFFER, vertexBuffer, org.lwjgl.opengl.GL15.GL_STATIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, vboId);
+        glBufferData(GL_ARRAY_BUFFER, vertexBuffer, GL_STATIC_DRAW);
 
-        org.lwjgl.opengl.GL20.glVertexAttribPointer(0, 2, org.lwjgl.opengl.GL11.GL_FLOAT, false, 2 * Float.BYTES, 0);
-        org.lwjgl.opengl.GL20.glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 2, GL_FLOAT, false, 2 * Float.BYTES, 0L);
+        glEnableVertexAttribArray(0);
 
-        org.lwjgl.opengl.GL15.glBindBuffer(org.lwjgl.opengl.GL15.GL_ARRAY_BUFFER, 0);
-        org.lwjgl.opengl.GL30.glBindVertexArray(0);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
 
-        org.lwjgl.system.MemoryUtil.memFree(vertexBuffer);
+        MemoryUtil.memFree(vertexBuffer);
     }
 
     public void render(int screenWidth, int screenHeight, String targetedBlockName) {
-        org.lwjgl.opengl.GL11.glDisable(org.lwjgl.opengl.GL11.GL_DEPTH_TEST);
+        glDisable(GL_DEPTH_TEST);
 
         hudShader.bind();
         hudShader.setUniform("hudColor", 1.0f, 1.0f, 1.0f);
 
-        org.lwjgl.opengl.GL30.glBindVertexArray(vaoId);
-        org.lwjgl.opengl.GL11.glDrawArrays(org.lwjgl.opengl.GL11.GL_LINES, 0, 4);
-        org.lwjgl.opengl.GL30.glBindVertexArray(0);
+        glBindVertexArray(vaoId);
+        glDrawArrays(GL_LINES, 0, 4);
+        glBindVertexArray(0);
 
         hudShader.unbind();
 
-        org.lwjgl.opengl.GL11.glEnable(org.lwjgl.opengl.GL11.GL_DEPTH_TEST);
+        String textToShow = (targetedBlockName != null && !targetedBlockName.isBlank())
+                ? targetedBlockName
+                : "TEST";
+
+        float textX = (screenWidth / 2.0f) + 14.0f;
+        float textY = (screenHeight / 2.0f) - 8.0f;
+
+        textRenderer.renderText(textToShow, textX, textY, screenWidth, screenHeight);
+
+        glEnable(GL_DEPTH_TEST);
     }
 
     public void cleanup() {
         if (hudShader != null) {
             hudShader.cleanup();
+            hudShader = null;
         }
 
-        org.lwjgl.opengl.GL15.glDeleteBuffers(vboId);
-        org.lwjgl.opengl.GL30.glDeleteVertexArrays(vaoId);
+        if (textRenderer != null) {
+            textRenderer.cleanup();
+            textRenderer = null;
+        }
+
+        if (vboId != 0) {
+            glDeleteBuffers(vboId);
+            vboId = 0;
+        }
+
+        if (vaoId != 0) {
+            glDeleteVertexArrays(vaoId);
+            vaoId = 0;
+        }
     }
 }
