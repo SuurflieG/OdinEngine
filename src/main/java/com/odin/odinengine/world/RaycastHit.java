@@ -1,25 +1,22 @@
 package com.odin.odinengine.world;
 
 public class RaycastHit {
-
     private final int blockX;
     private final int blockY;
     private final int blockZ;
     private final short blockId;
 
-    private final int previousX;
-    private final int previousY;
-    private final int previousZ;
+    // The face of the hit block that the ray entered through.
+    // Example: if the ray was moving in +X and entered a block,
+    // the face hit is LEFT.
+    private final Direction hitFace;
 
-    public RaycastHit(int blockX, int blockY, int blockZ, short blockId,
-                      int previousX, int previousY, int previousZ) {
+    public RaycastHit(int blockX, int blockY, int blockZ, short blockId, Direction hitFace) {
         this.blockX = blockX;
         this.blockY = blockY;
         this.blockZ = blockZ;
         this.blockId = blockId;
-        this.previousX = previousX;
-        this.previousY = previousY;
-        this.previousZ = previousZ;
+        this.hitFace = hitFace;
     }
 
     public int getBlockX() {
@@ -38,15 +35,19 @@ public class RaycastHit {
         return blockId;
     }
 
-    public int getPreviousX() {
-        return previousX;
+    public Direction getHitFace() {
+        return hitFace;
     }
 
-    public int getPreviousY() {
-        return previousY;
+    public int getPlaceX() {
+        return blockX + hitFace.dx();
     }
 
-    public int getPreviousZ() {
-        return previousZ;
+    public int getPlaceY() {
+        return blockY + hitFace.dy();
+    }
+
+    public int getPlaceZ() {
+        return blockZ + hitFace.dz();
     }
 }

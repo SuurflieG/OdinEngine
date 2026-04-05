@@ -187,9 +187,9 @@ public class Engine {
     }
 
     private void placeBlockAtTargetFace() {
-        int placeX = currentRaycastHit.getPreviousX();
-        int placeY = currentRaycastHit.getPreviousY();
-        int placeZ = currentRaycastHit.getPreviousZ();
+        int placeX = currentRaycastHit.getPlaceX();
+        int placeY = currentRaycastHit.getPlaceY();
+        int placeZ = currentRaycastHit.getPlaceZ();
 
         if (placeY < 0 || placeY >= Chunk.SIZE_Y) {
             return;
@@ -200,8 +200,8 @@ public class Engine {
         }
 
         short blockToPlace = blockRegistry.getId("grass");
-
         world.setBlockId(placeX, placeY, placeZ, blockToPlace);
+
         renderer.rebuildChunks(world, getAffectedChunksForBlockEdit(placeX, placeY, placeZ));
         updateRaycast();
     }
@@ -224,8 +224,7 @@ public class Engine {
         currentRaycastHit = world.raycast(
                 camera.getPosition(),
                 camera.getForwardVector(),
-                RAYCAST_MAX_DISTANCE,
-                RAYCAST_STEP_SIZE
+                RAYCAST_MAX_DISTANCE
         );
     }
 

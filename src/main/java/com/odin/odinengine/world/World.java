@@ -44,35 +44,74 @@ public class World {
         }
     }
 
-    public RaycastHit raycast(Vector3f origin, Vector3f direction, float maxDistance, float stepSize) {
-        Vector3f current = new Vector3f(origin);
+    public RaycastHit raycast(Vector3f origin, Vector3f direction, float maxDistance) {
+        Vector3f dir = new Vector3f(direction).normalize();
 
-        int previousBlockX = (int) Math.floor(current.x);
-        int previousBlockY = (int) Math.floor(current.y);
-        int previousBlockZ = (int) Math.floor(current.z);
+        int x = (int) Math.floor(origin.x);
+        int y = (int) Math.floor(origin.y);
+        int z = (int) Math.floor(origin.z);
 
-        for (float traveled = 0.0f; traveled <= maxDistance; traveled += stepSize) {
-            int blockX = (int) Math.floor(current.x);
-            int blockY = (int) Math.floor(current.y);
-            int blockZ = (int) Math.floor(current.z);
+        int stepX = dir.x > 0.0f ? 1 : (dir.x < 0.0f ? -1 : 0);
+        int stepY = dir.y > 0.0f ? 1 : (dir.y < 0.0f ? -1 : 0);
+        int stepZ = dir.z > 0.0f ? 1 : (dir.z < 0.0f ? -1 : 0);
 
-            short blockId = getBlockId(blockX, blockY, blockZ);
+        float tDeltaX = stepX != 0 ? Math.abs(1.0f / dir.x) : Float.POSITIVE_INFINITY;
+        float tDeltaY = stepY != 0 ? Math.abs(1.0f / dir.y) : Float.POSITIVE_INFINITY;
+        float tDeltaZ = stepZ != 0 ? Math.abs(1.0f / dir.z) : Float.POSITIVE_INFINITY;
 
+        float tMaxX = intBound(origin.x, dir.x);
+        float tMaxY = intBound(origin.y, dir.y);
+        float tMaxZ = intBound(origin.z, dir.z);
+
+        Direction enteredFace = null;
+        float traveled = 0.0f;
+
+        while (traveled <= maxDistance) {
+            short blockId = getBlockId(x, y, z);
             if (blockRegistry.isSolid(blockId)) {
-                return new RaycastHit(
-                        blockX, blockY, blockZ, blockId,
-                        previousBlockX, previousBlockY, previousBlockZ
-                );
+                return new RaycastHit(x, y, z, blockId, enteredFace != null ? enteredFace : Direction.FRONT);
             }
 
-            previousBlockX = blockX;
-            previousBlockY = blockY;
-            previousBlockZ = blockZ;
-
-            current.fma(stepSize, direction);
+            if (tMaxX < tMaxY) {
+                if (tMaxX < tMaxZ) {
+                    x += stepX;
+                    traveled = tMaxX;
+                    tMaxX += tDeltaX;
+                    enteredFace = stepX > 0 ? Direction.LEFT : Direction.RIGHT;
+                } else {
+                    z += stepZ;
+                    traveled = tMaxZ;
+                    tMaxZ += tDeltaZ;
+                    enteredFace = stepZ > 0 ? Direction.BACK : Direction.FRONT;
+                }
+            } else {
+                if (tMaxY < tMaxZ) {
+                    y += stepY;
+                    traveled = tMaxY;
+                    tMaxY += tDeltaY;
+                    enteredFace = stepY > 0 ? Direction.BOTTOM : Direction.TOP;
+                } else {
+                    z += stepZ;
+                    traveled = tMaxZ;
+                    tMaxZ += tDeltaZ;
+                    enteredFace = stepZ > 0 ? Direction.BACK : Direction.FRONT;
+                }
+            }
         }
 
         return null;
+    }
+
+    private float intBound(float s, float ds) {
+        if (ds == 0.0f) {
+            return Float.POSITIVE_INFINITY;
+        }
+
+        if (ds > 0.0f) {
+            return ((float) Math.floor(s) + 1.0f - s) / ds;
+        } else {
+            return (s - (float) Math.floor(s)) / -ds;
+        }
     }
 
     public void setBlockId(int worldX, int y, int worldZ, short blockId) {
