@@ -36,7 +36,7 @@ public class HUDRenderer {
         );
 
         textRenderer = new TTFTextRenderer();
-        textRenderer.init("src/main/resources/assets/odinengine/fonts/debug.ttf", 24.0f);
+        textRenderer.init("src/main/resources/assets/odinengine/fonts/rainyhearts.ttf", 24.0f);
 
         float size = 0.015f;
         float[] vertices = {
